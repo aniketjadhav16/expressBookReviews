@@ -59,35 +59,24 @@ regd_users.post("/login", (req, res) => {
 
   const token = jwt.sign({ username }, SECRET_KEY, { expiresIn: "1h" });
 
-  return res.status(200).json({
-    message: "Login successful",
-    token: token,
-  });
+  return res.status(200).send("Customer logged in successfully");
 });
 
 // Add a book review
 regd_users.put("/auth/review/:isbn", authenticateJWT, (req, res) => {
   const isbn = req.params.isbn;
-  const review = req.body.review;
+  const review = req.query.review;
   const username = req.user.username;
 
-  if (!review || typeof review !== "string" || review.trim() === "") {
-    return res.status(400).json({ message: "Review text is required" });
-  }
+  const book = books[isbn];
 
-   let book = null
-  for (let key in books) {
-    if (books[key].ISBN === isbn) {
-      book = books[key];
-      break;
-    }
+  if (!review) {
+    return res.status(400).send("Review is required");
   }
 
   if (book) {
     book.reviews[username] = review.trim();
-    return res
-      .status(200)
-      .json({ message: "Review successfully posted", reviews: book.reviews });
+    return res.status(200).send(`Review of book with isbn: ${isbn} has been added or edited`);
   } else {
     return res.status(404).json({ message: `ISBN ${isbn} not found` });
   }
@@ -98,32 +87,23 @@ regd_users.delete("/auth/review/:isbn", authenticateJWT, (req, res) => {
   const isbn = req.params.isbn;
   const username = req.user.username;
 
-  let book = null
+  let book = null;
 
   for (let key in books) {
-    if (books[key].ISBN === isbn) {
+    if (key === isbn) {
       book = books[key];
+      delete book.reviews[username];
       break;
     }
   }
 
   if (book) {
-    if (book.reviews && book.reviews[username]) {
-      delete book.reviews[username];
-      return res
-        .status(200)
-        .json({
-          message: "Review successfully deleted",
-          reviews: book.reviews,
-        });
-    } else {
+    return res.status(200).send(`Review of book with isbn: ${isbn} has been deleted`)
+  } else {
       return res
         .status(404)
         .json({ message: "No review by this user to delete" });
     }
-  } else {
-    return res.status(404).json({ message: `ISBN ${isbn} not found` });
-  }
 });
 
 module.exports.authenticated = regd_users;
